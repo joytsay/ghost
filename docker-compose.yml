@@ -1,0 +1,28 @@
+services:
+  ghost-build:
+    image: dd1:5000/joy.tsay:ghost
+    container_name: ghost-build
+    build:
+      context: .
+      args:
+        - USERNAME=joy.tsay
+        - USERID=5004
+        - GROUPID=100
+  ghost-run:
+    image: dd1:5000/joy.tsay:ghost
+    working_dir: /code/ghost
+    container_name: ghost
+    shm_size: 10g
+    ports:
+      - "9536:8080"
+    volumes:
+      - /mnt/data/datasets:/data
+      - /nfs/home/joy.tsay:/code
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    

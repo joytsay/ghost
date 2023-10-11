@@ -1,11 +1,10 @@
-import sys
 import argparse
 import cv2
 import torch
 import time
 import os
 
-from utils.inference.image_processing import crop_face, get_final_image
+from utils.inference.image_processing import crop_face, get_final_image, show_images
 from utils.inference.video_processing import read_video, get_target, get_final_video, add_audio_from_another_video, face_enhancement
 from utils.inference.core import model_inference
 
@@ -15,7 +14,8 @@ from insightface_func.face_detect_crop_multi import Face_detect_crop
 from arcface_model.iresnet import iresnet100
 from models.pix2pix_model import Pix2PixModel
 from models.config_sr import TestOptions
-
+import warnings
+warnings.filterwarnings("ignore")
 
 def init_models(args):
     # model for face cropping

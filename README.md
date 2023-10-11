@@ -60,6 +60,20 @@ We are very troubled by the fact that GHOST can be used for unethical and disrep
   ```bash
   sh download_models.sh
   ```
+
+## Docker
+  
+1. Pull image
+```
+docker pull nvidia/cuda:11.3.1-cudnn8-runtime-ubuntu20.04
+```
+
+2. Build and run container
+```
+docker-compose up
+```
+
+
 ## Usage
   1. Colab Demo <a href="https://colab.research.google.com/drive/1B-2JoRxZZwrY2eK_E7TB5VYcae3EjQ1f"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="google colab logo"></a> or you can use jupyter notebook [SberSwapInference.ipynb](SberSwapInference.ipynb) locally
   2. Face Swap On Video

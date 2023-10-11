@@ -130,8 +130,9 @@ def crop_frames_and_get_transforms(full_frames: List[np.ndarray],
             if len(kps) > 1 or set_target:
                 faces = []
                 for p in kps:
-                    M, _ = face_align.estimate_norm(p, crop_size, mode ='None') 
-                    align_img = cv2.warpAffine(frame, M, (crop_size, crop_size), borderValue=0.0)
+                    # M, _ = face_align.estimate_norm(p, crop_size, mode ='None') 
+                    # align_img = cv2.warpAffine(frame, M, (crop_size, crop_size), borderValue=0.0)
+                    align_img, M = face_align.norm_crop2(frame, kps[0], crop_size)
                     faces.append(align_img)    
                 
                 face_norm = normalize_and_torch_batch(np.array(faces))
@@ -159,8 +160,9 @@ def crop_frames_and_get_transforms(full_frames: List[np.ndarray],
     for i, frame in tqdm(enumerate(full_frames)):
         for q in range (len(target_embeds)):  
             try:
-                M, _ = face_align.estimate_norm(smooth_kps[q][i], crop_size, mode ='None') 
-                align_img = cv2.warpAffine(frame, M, (crop_size, crop_size), borderValue=0.0)
+                align_img, M = face_align.norm_crop2(frame, smooth_kps[q][i], crop_size)
+                # M, _ = face_align.estimate_norm(smooth_kps[q][i], crop_size, mode ='None') 
+                # align_img = cv2.warpAffine(frame, M, (crop_size, crop_size), borderValue=0.0)
                 crop_frames[q].append(align_img)
                 tfm_array[q].append(M)
             except:             

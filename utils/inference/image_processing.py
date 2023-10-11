@@ -15,9 +15,10 @@ def crop_face(image_full: np.ndarray, app: Callable, crop_size: int) -> np.ndarr
     Crop face from image and resize
     """
     kps = app.get(image_full, crop_size)
-    M, _ = face_align.estimate_norm(kps[0], crop_size, mode ='None') 
-    align_img = cv2.warpAffine(image_full, M, (crop_size, crop_size), borderValue=0.0)         
-    return [align_img]
+    crop_img, M = face_align.norm_crop2(image_full, kps[0], crop_size)
+    # M, _ = face_align.estimate_norm(kps[0], crop_size, mode ='None') 
+    # align_img = cv2.warpAffine(image_full, M, (crop_size, crop_size), borderValue=0.0)         
+    return [crop_img]
 
 
 def normalize_and_torch(image: np.ndarray) -> torch.tensor:
