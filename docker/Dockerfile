@@ -1,4 +1,5 @@
-FROM dd1:5000/workspace:pytorch1.12.1-cuda11.3-torchface1.12.0.extra
+FROM dd1:5000/workspace:pytorch2.0.1-cuda11.8-torchface1.12.0.1.extra
+USER root
 WORKDIR /workspace/
 RUN apt-get update && apt-get install -y software-properties-common && \
     add-apt-repository ppa:deadsnakes/ppa -y && \
@@ -14,14 +15,10 @@ RUN apt-get update && apt-get install -y software-properties-common && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin
-RUN mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600
-RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub
-RUN add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
-RUN add-apt-repository ppa:ubuntu-toolchain-r/test
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb
+RUN dpkg -i cuda-keyring_1.0-1_all.deb
 RUN apt-get update
-RUN apt install gcc-9 libnccl2=2.9.9-1+cuda11.3 libnccl-dev=2.9.9-1+cuda11.3 -y
-RUN apt --fix-broken install
+RUN apt install libnccl2 libnccl-dev -y --allow-change-held-packages
 
 RUN wget https://bootstrap.pypa.io/get-pip.py
 RUN python3.8 get-pip.py

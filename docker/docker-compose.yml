@@ -14,7 +14,7 @@ services:
     container_name: ghost
     shm_size: 10g
     ports:
-      - "9536:8080"
+      - "9539:8090"
     volumes:
       - /mnt/data/datasets:/data
       - /nfs/home/joy.tsay:/code
@@ -23,6 +23,5 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
               capabilities: [gpu]
     

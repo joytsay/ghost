@@ -1,5 +1,5 @@
 import torch
-from torch._six import string_classes
+# from torch._six import string_classes
 import functools
 import numpy as np
 import sys
@@ -17,6 +17,7 @@ if torch.distributed.is_available():
     from ..parallel import DistributedDataParallel as apex_DDP
     from ..parallel.LARC import LARC
 
+string_classes = str
 
 def to_type(dtype, t):
     if isinstance(t, torch.Tensor):

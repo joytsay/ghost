@@ -1,0 +1,13 @@
+numpy==1.23
+torch
+torchvision
+opencv-python==4.8.1.78
+onnxruntime-gpu==1.16.0
+mxnet-cu113==1.9.1
+scikit-image==0.21.0
+insightface==0.7.3
+requests==2.25.1
+kornia==0.5.4
+dill
+wandb
+protobuf==3.20

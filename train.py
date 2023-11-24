@@ -138,8 +138,8 @@ def train_one_epoch(G: 'generator model',
             torch.save(G.state_dict(), f'./saved_models_{args.run_name}/G_latest.pth')
             torch.save(D.state_dict(), f'./saved_models_{args.run_name}/D_latest.pth')
 
-            torch.save(G.state_dict(), f'./current_models_{args.run_name}/G_' + str(epoch)+ '_' + f"{iteration:06}" + '.pth')
-            torch.save(D.state_dict(), f'./current_models_{args.run_name}/D_' + str(epoch)+ '_' + f"{iteration:06}" + '.pth')
+            # torch.save(G.state_dict(), f'./current_models_{args.run_name}/G_' + str(epoch)+ '_' + f"{iteration:06}" + '.pth')
+            # torch.save(D.state_dict(), f'./current_models_{args.run_name}/D_' + str(epoch)+ '_' + f"{iteration:06}" + '.pth')
 
         if (iteration % 250 == 0) and (args.use_wandb):
             ### Посмотрим как выглядит свап на трех конкретных фотках, чтобы проследить динамику
@@ -152,9 +152,14 @@ def train_one_epoch(G: 'generator model',
             res4 = get_faceswap('examples/images/training//source4.png', 'examples/images/training//target4.png', G, netArc, device)
             res5 = get_faceswap('examples/images/training//source5.png', 'examples/images/training//target5.png', G, netArc, device)  
             res6 = get_faceswap('examples/images/training//source6.png', 'examples/images/training//target6.png', G, netArc, device)
+        
+            res7 = get_faceswap('examples/images/training//source7.png', 'examples/images/training//target7.png', G, netArc, device)
+            res8 = get_faceswap('examples/images/training//source8.png', 'examples/images/training//target8.png', G, netArc, device)  
+            res9 = get_faceswap('examples/images/training//source9.png', 'examples/images/training//target9.png', G, netArc, device)  
+            res10 = get_faceswap('examples/images/training//source10.png', 'examples/images/training//target10.png', G, netArc, device)
             
-            output1 = np.concatenate((res1, res2, res3), axis=0)
-            output2 = np.concatenate((res4, res5, res6), axis=0)
+            output1 = np.concatenate((res1, res2, res3, res4, res5), axis=0)
+            output2 = np.concatenate((res6, res7, res8, res9, res10), axis=0)
             
             output = np.concatenate((output1, output2), axis=1)
 
@@ -330,6 +335,6 @@ if __name__ == "__main__":
     # Создаем папки, чтобы было куда сохранять последние веса моделей, а также веса с каждой эпохи
     if not os.path.exists(f'./saved_models_{args.run_name}'):
         os.mkdir(f'./saved_models_{args.run_name}')
-        os.mkdir(f'./current_models_{args.run_name}')
+        # os.mkdir(f'./current_models_{args.run_name}')
     
     main(args)

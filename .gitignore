@@ -5,6 +5,10 @@ __pycache__
 *.onnx
 *.deb
 *.png
+*.mp4
+*.png
 *.jpg
 *.yaml
 *.pth*
+wandb/
+
