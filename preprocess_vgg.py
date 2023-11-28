@@ -1,6 +1,8 @@
 import os
+import torch
 import sys
 import cv2
+import numpy as np
 import argparse
 from insightface_func.face_detect_crop_single import Face_detect_crop
 from pathlib import Path
@@ -12,6 +14,15 @@ def main(args):
     crop_size = 224
 
     dirs = os.listdir(args.path_to_dataset)
+    print(f"path_to_dataset {args.path_to_dataset}")
+    print(f"save_path {args.save_path}")
+    print(f"dist {args.dist}")
+    print(f"dirs {len(dirs)}")
+    if args.dist == 0:
+        dirs = dirs[:len(dirs)//2]
+    elif args.dist == 1:
+        dirs = dirs[len(dirs)//2:]
+    print(f"dist dirs {len(dirs)}")
     for i in tqdm(range(len(dirs))):
         d = os.path.join(args.path_to_dataset, dirs[i])
         dir_to_save = os.path.join(args.save_path, dirs[i])
@@ -31,9 +42,9 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('--path_to_dataset', default='./VggFace2/VGG-Face2/data/preprocess_train', type=str)
-    parser.add_argument('--save_path', default='./VggFace2-crop', type=str)
-    
+    parser.add_argument('--path_to_dataset', default='./examples/glintest/glint_subtest/', type=str)
+    parser.add_argument('--save_path', default='./examples/glintest/vgg/', type=str)
+    parser.add_argument('--dist', default=-1, type=int)
     args = parser.parse_args()
     
     main(args)
