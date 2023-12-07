@@ -9,7 +9,7 @@ from tqdm import tqdm
 from torchface.models.face_alignment import FANPredictor
 from torchface.models.face_detection import SCRFDDetector
 from torchface.models.super_resolution import CodeFormerDD
-from torchface.utils.preprocessing import get_pggan_alignment
+from torchface.utils.preprocessing import get_pggan_alignment_from_template
 from torchface.utils.transform import antialias_warp_affine, antialias_resize
 from insightface.utils import face_align
 
@@ -38,9 +38,13 @@ def main(args):
     print(f"dist {args.dist}")
     print(f"dirs {len(dirs)}")
     if args.dist == 0:
-        dirs = dirs[:len(dirs)//2]
+        dirs = dirs[:len(dirs)//4]
     elif args.dist == 1:
-        dirs = dirs[len(dirs)//2:]
+        dirs = dirs[len(dirs)//4:len(dirs)//2]
+    elif args.dist == 2:
+        dirs = dirs[len(dirs)//2:-len(dirs)//4]
+    elif args.dist == 3:
+        dirs = dirs[-len(dirs)//4:]
     print(f"dist dirs {len(dirs)}")
     for i in tqdm(range(len(dirs))):
         d = os.path.join(args.path_to_dataset, dirs[i])
@@ -67,13 +71,13 @@ def main(args):
                 mask = np.ones((input_size, input_size, 3))
                 mask = cv2.blur(mask, (5, 5))
                 lms = lms_predictor.predict(image, face_bboxs)[0]
-                m = get_pggan_alignment(lms, output_size=face_enhancer.input_size)
+                m = get_pggan_alignment_from_template(lms, input_size)
                 m_inv = np.linalg.inv(m)
                 face_region = antialias_warp_affine(image, m[:2], (input_size, input_size),
                                                     borderMode=cv2.BORDER_CONSTANT, borderValue=(135, 133, 132))     # gray
-                enhanced_region = face_enhancer.process(face_region)
+                enhanced_region = face_enhancer.process(face_region[..., ::-1])
                 # we need to use replicate border mode to prevent unexpected alias in the final results
-                reversed_enhanced = antialias_warp_affine(enhanced_region, m_inv, (W, H), borderMode=cv2.BORDER_REPLICATE)
+                reversed_enhanced = antialias_warp_affine(enhanced_region[..., ::-1], m_inv, (W, H), borderMode=cv2.BORDER_REPLICATE)
                 reversed_mask = antialias_warp_affine(mask, m_inv[:2], (W, H))
                 results = reversed_enhanced * reversed_mask + results * (1 - reversed_mask)
                 results = np.clip(results, 0, 255).astype(np.uint8)
