@@ -106,6 +106,20 @@ We also provide the training code for face swap model as follows:
   python train.py --run_name {YOUR_RUN_NAME}
   ```
 We provide a lot of different options for the training. More info about each option you can find in `train.py` file. If you would like to use wandb logging of the experiments, you should login to wandb first  `--wandb login`.
+
+ 4. wandb sweep
+ - init sweep
+ ```bash
+ wandb sweep sweep.yml
+ ```
+ - start sweep on diffrent gpus
+ ```bash
+ CUDA_VISIBLE_DEVICES=1 wandb agent joytsay/ghost/<HASH> --count 10
+ ```
+ ![](examples/images/W&BChart2023_12_7_9_22_57.svg)
+ ![](examples/images/W&BChart2023_12_7_9_22_31.svg)
+
+
   
 ### Tips
   1. For the first epochs we suggest not to use eye detection loss and scheduler if you train from scratch.

@@ -46,6 +46,8 @@ def train_one_epoch(G: 'generator model',
                     loss_adv_accumulated:int):
     
     for iteration, data in enumerate(dataloader):
+        if args.max_steps > 0 and iteration > args.max_steps:
+            break
         start_time = time.time()
         
         Xs_orig, Xs, Xt, same_person = data
@@ -141,7 +143,7 @@ def train_one_epoch(G: 'generator model',
             # torch.save(G.state_dict(), f'./current_models_{args.run_name}/G_' + str(epoch)+ '_' + f"{iteration:06}" + '.pth')
             # torch.save(D.state_dict(), f'./current_models_{args.run_name}/D_' + str(epoch)+ '_' + f"{iteration:06}" + '.pth')
 
-        if (iteration % 250 == 0) and (args.use_wandb):
+        if (iteration % args.show_step == 0) and (args.use_wandb):
             ### Посмотрим как выглядит свап на трех конкретных фотках, чтобы проследить динамику
             G.eval()
 
@@ -172,6 +174,7 @@ def train(args, device):
     # training params
     batch_size = args.batch_size
     max_epoch = args.max_epoch
+    max_steps = args.max_steps
     
     # initializing main models
     G = AEI_Net(args.backbone, num_blocks=args.num_blocks, c_id=512).to(device)
@@ -217,6 +220,16 @@ def train(args, device):
         
     if args.pretrained:
         try:
+            if args.D_path == '':
+                if args.num_blocks == 2:
+                    args.D_path = 'weights/D_unet_2blocks.pth'
+                elif args.num_blocks == 3:
+                    args.D_path = 'weights/D_unet_3blocks.pth'
+            if args.G_path == '':
+                if args.num_blocks == 2:
+                    args.G_path = 'weights/G_unet_2blocks.pth'
+                elif args.num_blocks == 3:
+                    args.G_path = 'weights/G_unet_3blocks.pth'
             G.load_state_dict(torch.load(args.G_path, map_location=torch.device('cpu')), strict=False)
             D.load_state_dict(torch.load(args.D_path, map_location=torch.device('cpu')), strict=False)
             print("Loaded pretrained weights for G and D")
@@ -262,8 +275,8 @@ if __name__ == "__main__":
     
     # dataset params
     parser.add_argument('--dataset_path', default='/VggFace2-crop/', help='Path to the dataset. If not VGG2 dataset is used, param --vgg should be set False')
-    parser.add_argument('--G_path', default='./saved_models/G.pth', help='Path to pretrained weights for G. Only used if pretrained=True')
-    parser.add_argument('--D_path', default='./saved_models/D.pth', help='Path to pretrained weights for D. Only used if pretrained=True')
+    parser.add_argument('--G_path', default='', help='Path to pretrained weights for G. Only used if pretrained=True')
+    parser.add_argument('--D_path', default='', help='Path to pretrained weights for D. Only used if pretrained=True')
     parser.add_argument('--vgg', default=True, type=bool, help='When using VGG2 dataset (or any other dataset with several photos for one identity)')
     # weights for loss
     parser.add_argument('--weight_adv', default=1, type=float, help='Adversarial Loss weight')
@@ -294,6 +307,7 @@ if __name__ == "__main__":
     parser.add_argument('--lr_G', default=4e-4, type=float)
     parser.add_argument('--lr_D', default=4e-4, type=float)
     parser.add_argument('--max_epoch', default=2000, type=int)
+    parser.add_argument('--max_steps', default=-1, type=int)
     parser.add_argument('--show_step', default=500, type=int)
     parser.add_argument('--save_epoch', default=1, type=int)
     parser.add_argument('--optim_level', default='O2', type=str)

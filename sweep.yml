@@ -1,0 +1,44 @@
+# The program to run
+program: train.py
+
+# Method can be grid, random or bayes
+method: bayes
+
+# Project this sweep is part of
+project: ghost
+entity: joytsay
+
+# Metric to optimize
+metric:
+  name: loss_id
+  goal: minimize
+
+
+# Parameters space to search
+parameters:
+  use_wandb:
+    value: True
+  eye_detector_loss:
+    value: True
+  weight_eyes:
+    distribution: int_uniform
+    min: 0
+    max: 2000
+  weight_id:
+    distribution: int_uniform
+    min: 20
+    max: 100
+  batch_size:
+    value: 4
+  num_blocks:
+    values: [2,3]
+  show_step:
+    value: 100
+  max_epoch:
+    value: 1
+  max_steps:
+    value: 500
+  dataset_path:
+    value: '/data/glint360k/glint_asian/celebrity_crop/'
+  run_name:
+    value: 'sweep'
