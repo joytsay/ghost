@@ -343,6 +343,7 @@ if __name__ == "__main__":
         config.batch_size = args.batch_size
         config.lr_G = args.lr_G
         config.lr_D = args.lr_D
+        config.num_blocks = args.num_blocks
     elif not os.path.exists('./images'):
         os.mkdir('./images')
     
