@@ -11,3 +11,4 @@ kornia==0.5.4
 dill
 wandb
 protobuf==3.20
+onnx2torch

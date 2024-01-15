@@ -175,19 +175,23 @@ def train(args, device):
     batch_size = args.batch_size
     max_epoch = args.max_epoch
     max_steps = args.max_steps
-    
+
     # initializing main models
     G = AEI_Net(args.backbone, num_blocks=args.num_blocks, c_id=512).to(device)
     D = MultiscaleDiscriminator(input_nc=3, n_layers=5, norm_layer=torch.nn.InstanceNorm2d).to(device)
     G.train()
     D.train()
-    
+
     # initializing model for identity extraction
-    netArc = iresnet100(fp16=False)
-    netArc.load_state_dict(torch.load('arcface_model/backbone.pth'))
-    netArc=netArc.cuda()
+    if args.arcface_onnx_path is None:
+        netArc = iresnet100(fp16=False)
+        netArc.load_state_dict(torch.load('arcface_model/backbone.pth'))
+    else:
+        from onnx2torch import convert
+        netArc = convert(args.arcface_onnx_path)
+    netArc = netArc.cuda()
     netArc.eval()
-    
+
     if args.eye_detector_loss:
         model_ft = models.FAN(4, "False", "False", 98)
         checkpoint = torch.load('./AdaptiveWingLoss/AWL_detector/WFLW_4HG.pth')
@@ -204,7 +208,7 @@ def train(args, device):
         model_ft.eval()
     else:
         model_ft=None
-    
+
     opt_G = optim.Adam(G.parameters(), lr=args.lr_G, betas=(0, 0.999), weight_decay=1e-4)
     opt_D = optim.Adam(D.parameters(), lr=args.lr_D, betas=(0, 0.999), weight_decay=1e-4)
 
@@ -275,6 +279,7 @@ if __name__ == "__main__":
     
     # dataset params
     parser.add_argument('--dataset_path', default='/VggFace2-crop/', help='Path to the dataset. If not VGG2 dataset is used, param --vgg should be set False')
+    parser.add_argument('--arcface_onnx_path', default=None, help='Path to source arcface emb extractor')
     parser.add_argument('--G_path', default='', help='Path to pretrained weights for G. Only used if pretrained=True')
     parser.add_argument('--D_path', default='', help='Path to pretrained weights for D. Only used if pretrained=True')
     parser.add_argument('--vgg', default=True, type=bool, help='When using VGG2 dataset (or any other dataset with several photos for one identity)')
