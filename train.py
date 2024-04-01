@@ -73,15 +73,17 @@ def train_one_epoch(G: 'generator model',
         Di = D(Y)
         ZY = netArc(F.interpolate(Y, [112, 112], mode='bilinear', align_corners=False))
         
-        if args.eye_detector_loss:
-            Xt_eyes, Xt_heatmap_left, Xt_heatmap_right = detect_landmarks(Xt, model_ft)
-            Y_eyes, Y_heatmap_left, Y_heatmap_right = detect_landmarks(Y, model_ft)
+        if args.eye_mouth_detector_loss:
+            Xt_eyes, Xt_heatmap_left, Xt_heatmap_right, Xt_mouth, Xt_heatmap_mouth = detect_landmarks(Xt, model_ft)
+            Y_eyes, Y_heatmap_left, Y_heatmap_right, Y_mouth, Y_heatmap_mouth = detect_landmarks(Y, model_ft)
             eye_heatmaps = [Xt_heatmap_left, Xt_heatmap_right, Y_heatmap_left, Y_heatmap_right]
+            mouth_heatmaps = [Xt_heatmap_mouth, Y_heatmap_mouth]
         else:
             eye_heatmaps = None
+            mouth_heatmaps = None
             
-        lossG, loss_adv_accumulated, L_adv, L_attr, L_id, L_rec, L_l2_eyes = compute_generator_losses(G, Y, Xt, Xt_attr, Di,
-                                                                             embed, ZY, eye_heatmaps,loss_adv_accumulated, 
+        lossG, loss_adv_accumulated, L_adv, L_attr, L_id, L_rec, L_l2_eyes_mouth = compute_generator_losses(G, Y, Xt, Xt_attr, Di,
+                                                                             embed, ZY, eye_heatmaps, mouth_heatmaps,loss_adv_accumulated, 
                                                                              diff_person, same_person, args)
         
         with amp.scale_loss(lossG, opt_G) as scaled_loss:
@@ -106,9 +108,9 @@ def train_one_epoch(G: 'generator model',
 
         if iteration % args.show_step == 0:
             images = [Xs, Xt, Y]
-            if args.eye_detector_loss:
-                Xt_eyes_img = paint_eyes(Xt, Xt_eyes)
-                Yt_eyes_img = paint_eyes(Y, Y_eyes)
+            if args.eye_mouth_detector_loss:
+                Xt_eyes_img = paint_eyes(Xt, Xt_eyes, Xt_mouth)
+                Yt_eyes_img = paint_eyes(Y, Y_eyes, Y_mouth)
                 images.extend([Xt_eyes_img, Yt_eyes_img])
             image = make_image_list(images)
             if args.use_wandb:
@@ -120,15 +122,15 @@ def train_one_epoch(G: 'generator model',
             print(f'epoch: {epoch}    {iteration} / {len(dataloader)}')
             print(f'lossD: {lossD.item()}    lossG: {lossG.item()} batch_time: {batch_time}s')
             print(f'L_adv: {L_adv.item()} L_id: {L_id.item()} L_attr: {L_attr.item()} L_rec: {L_rec.item()}')
-            if args.eye_detector_loss:
-                print(f'L_l2_eyes: {L_l2_eyes.item()}')
+            if args.eye_mouth_detector_loss:
+                print(f'L_l2_eyes_mouth: {L_l2_eyes_mouth.item()}')
             print(f'loss_adv_accumulated: {loss_adv_accumulated}')
             if args.scheduler:
                 print(f'scheduler_G lr: {scheduler_G.get_last_lr()} scheduler_D lr: {scheduler_D.get_last_lr()}')
         
         if args.use_wandb:
-            if args.eye_detector_loss:
-                wandb.log({"loss_eyes": L_l2_eyes.item()}, commit=False)
+            if args.eye_mouth_detector_loss:
+                wandb.log({"loss_eyes_mouth": L_l2_eyes_mouth.item()}, commit=False)
             wandb.log({"loss_id": L_id.item(),
                        "lossD": lossD.item(),
                        "lossG": lossG.item(),
@@ -140,6 +142,8 @@ def train_one_epoch(G: 'generator model',
             torch.save(G.state_dict(), f'./saved_models_{args.run_name}/G_latest.pth')
             torch.save(D.state_dict(), f'./saved_models_{args.run_name}/D_latest.pth')
 
+        if iteration % 100000 == 0:
+            torch.save(G.state_dict(), f'./saved_models_{args.run_name}/G_latest_10W.pth')
             # torch.save(G.state_dict(), f'./current_models_{args.run_name}/G_' + str(epoch)+ '_' + f"{iteration:06}" + '.pth')
             # torch.save(D.state_dict(), f'./current_models_{args.run_name}/D_' + str(epoch)+ '_' + f"{iteration:06}" + '.pth')
 
@@ -147,21 +151,23 @@ def train_one_epoch(G: 'generator model',
             ### Посмотрим как выглядит свап на трех конкретных фотках, чтобы проследить динамику
             G.eval()
 
-            res1 = get_faceswap('examples/images/training//source1.png', 'examples/images/training//target1.png', G, netArc, device)
-            res2 = get_faceswap('examples/images/training//source2.png', 'examples/images/training//target2.png', G, netArc, device)  
-            res3 = get_faceswap('examples/images/training//source3.png', 'examples/images/training//target3.png', G, netArc, device)
+            # res1 = get_faceswap('examples/images/training//source1.png', 'examples/images/training//target1.png', G, netArc, device)
+            # res2 = get_faceswap('examples/images/training//source2.png', 'examples/images/training//target2.png', G, netArc, device)  
+            # res3 = get_faceswap('examples/images/training//source3.png', 'examples/images/training//target3.png', G, netArc, device)
             
-            res4 = get_faceswap('examples/images/training//source4.png', 'examples/images/training//target4.png', G, netArc, device)
-            res5 = get_faceswap('examples/images/training//source5.png', 'examples/images/training//target5.png', G, netArc, device)  
+            # res4 = get_faceswap('examples/images/training//source4.png', 'examples/images/training//target4.png', G, netArc, device)
+            # res5 = get_faceswap('examples/images/training//source5.png', 'examples/images/training//target5.png', G, netArc, device)  
             res6 = get_faceswap('examples/images/training//source6.png', 'examples/images/training//target6.png', G, netArc, device)
         
             res7 = get_faceswap('examples/images/training//source7.png', 'examples/images/training//target7.png', G, netArc, device)
             res8 = get_faceswap('examples/images/training//source8.png', 'examples/images/training//target8.png', G, netArc, device)  
             res9 = get_faceswap('examples/images/training//source9.png', 'examples/images/training//target9.png', G, netArc, device)  
-            res10 = get_faceswap('examples/images/training//source10.png', 'examples/images/training//target10.png', G, netArc, device)
+            # res10 = get_faceswap('examples/images/training//source10.png', 'examples/images/training//target10.png', G, netArc, device)
             
-            output1 = np.concatenate((res1, res2, res3, res4, res5), axis=0)
-            output2 = np.concatenate((res6, res7, res8, res9, res10), axis=0)
+            # output1 = np.concatenate((res1, res2, res3, res4, res5), axis=0)
+            # output2 = np.concatenate((res6, res7, res8, res9, res10), axis=0)
+            output1 = np.concatenate((res6, res7), axis=0)
+            output2 = np.concatenate((res8, res9), axis=0)
             
             output = np.concatenate((output1, output2), axis=1)
 
@@ -192,7 +198,7 @@ def train(args, device):
     netArc = netArc.cuda()
     netArc.eval()
 
-    if args.eye_detector_loss:
+    if args.eye_mouth_detector_loss:
         model_ft = models.FAN(4, "False", "False", 98)
         checkpoint = torch.load('./AdaptiveWingLoss/AWL_detector/WFLW_4HG.pth')
         if 'state_dict' not in checkpoint:
@@ -288,7 +294,7 @@ if __name__ == "__main__":
     parser.add_argument('--weight_attr', default=10, type=float, help='Attributes weight')
     parser.add_argument('--weight_id', default=20, type=float, help='Identity Loss weight')
     parser.add_argument('--weight_rec', default=10, type=float, help='Reconstruction Loss weight')
-    parser.add_argument('--weight_eyes', default=0., type=float, help='Eyes Loss weight')
+    parser.add_argument('--weight_eyes_mouth', default=0., type=float, help='Eyes Mouth Loss weight')
     # training params you may want to change
     
     parser.add_argument('--backbone', default='unet', const='unet', nargs='?', choices=['unet', 'linknet', 'resnet'], help='Backbone for attribute encoder')
@@ -301,7 +307,7 @@ if __name__ == "__main__":
     parser.add_argument('--scheduler', default=False, type=bool, help='If True decreasing LR is used for learning of generator and discriminator')
     parser.add_argument('--scheduler_step', default=5000, type=int)
     parser.add_argument('--scheduler_gamma', default=0.2, type=float, help='It is value, which shows how many times to decrease LR')
-    parser.add_argument('--eye_detector_loss', default=False, type=bool, help='If True eye loss with using AdaptiveWingLoss detector is applied to generator')
+    parser.add_argument('--eye_mouth_detector_loss', default=False, type=bool, help='If True eye loss with using AdaptiveWingLoss detector is applied to generator')
     # info about this run
     parser.add_argument('--use_wandb', default=False, type=bool, help='Use wandb to track your experiments or not')
     parser.add_argument('--run_name', required=True, type=str, help='Name of this run. Used to create folders where to save the weights.')
@@ -331,7 +337,7 @@ if __name__ == "__main__":
         config.weight_attr = args.weight_attr
         config.weight_id = args.weight_id
         config.weight_rec = args.weight_rec
-        config.weight_eyes = args.weight_eyes
+        config.weight_eyes_mouth = args.weight_eyes_mouth
         config.same_person = args.same_person
         config.Vgg2Face = args.vgg
         config.same_identity = args.same_identity
@@ -340,7 +346,7 @@ if __name__ == "__main__":
         config.scheduler = args.scheduler
         config.scheduler_step = args.scheduler_step
         config.scheduler_gamma = args.scheduler_gamma
-        config.eye_detector_loss = args.eye_detector_loss
+        config.eye_mouth_detector_loss = args.eye_mouth_detector_loss
         config.pretrained = args.pretrained
         config.run_name = args.run_name
         config.G_path = args.G_path

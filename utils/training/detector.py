@@ -25,20 +25,22 @@ def detect_landmarks(inputs, model_ft):
     pred_landmarks, _ = get_preds_fromhm(pred_heatmap)
     landmarks = pred_landmarks*4.0
     eyes = torch.cat((landmarks[:,96,:], landmarks[:,97,:]), 1)
-    return eyes, pred_heatmap[:,96,:,:], pred_heatmap[:,97,:,:]
+    mouth = landmarks[:,76:95,:]
+    return eyes, pred_heatmap[:,96,:,:], pred_heatmap[:,97,:,:], mouth, pred_heatmap[:,76:95,:,:]
 
 
-def paint_eyes(images, eyes):
-    list_eyes = []
+def paint_eyes(images, eyes, mouth):
+    list_eyes_mouth = []
     for i in range(len(images)):
         mask = torch2image(images[i])
         mask = cv2.cvtColor(mask, cv2.COLOR_BGR2RGB) 
-        
         cv2.circle(mask, (int(eyes[i][0]),int(eyes[i][1])), radius=3, color=(0,255,255), thickness=-1)
         cv2.circle(mask, (int(eyes[i][2]),int(eyes[i][3])), radius=3, color=(0,255,255), thickness=-1)
+        for j in range(mouth.shape[1]):
+            cv2.circle(mask, (int(mouth[i][j][0]),int(mouth[i][j][1])), radius=3, color=(255,255,0), thickness=-1)
         
         mask = mask[:, :, ::-1]
         mask = transforms_base(Image.fromarray(mask))
-        list_eyes.append(mask)
-    tensor_eyes = torch.stack(list_eyes)
-    return tensor_eyes
+        list_eyes_mouth.append(mask)
+    tensor_eyes_mouth = torch.stack(list_eyes_mouth)
+    return tensor_eyes_mouth
