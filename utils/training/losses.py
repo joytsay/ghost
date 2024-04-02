@@ -11,8 +11,8 @@ def hinge_loss(X, positive=True):
         return torch.relu(X+1)
     
     
-def compute_generator_losses(G, Y, Xt, Xt_attr, Di, embed, ZY, eye_heatmaps, mouth_heatmaps,
-                             loss_adv_accumulated, diff_person, same_person, args):
+def compute_generator_losses(G, Y, Xt, Xt_attr, Di, embed, ZY, heatmaps, loss_adv_accumulated,
+                             diff_person, same_person, args):
     # adversarial loss
     L_adv = 0.
     for di in Di:
@@ -38,9 +38,8 @@ def compute_generator_losses(G, Y, Xt, Xt_attr, Di, embed, ZY, eye_heatmaps, mou
     
     # l2 eyes mouth loss
     if args.eye_mouth_detector_loss:
-        Xt_heatmap_left, Xt_heatmap_right, Y_heatmap_left, Y_heatmap_right = eye_heatmaps
-        Xt_heatmap_mouth, Y_heatmap_mouth = mouth_heatmaps
-        L_l2_eyes_mouth = l2_loss(Xt_heatmap_left, Y_heatmap_left) + l2_loss(Xt_heatmap_right, Y_heatmap_right) + l2_loss(Xt_heatmap_mouth, Y_heatmap_mouth)
+        Xt_heatmap, Y_heatmap = heatmaps
+        L_l2_eyes_mouth = l2_loss(Xt_heatmap, Y_heatmap)
     else:
         L_l2_eyes_mouth = 0
         

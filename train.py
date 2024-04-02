@@ -74,16 +74,14 @@ def train_one_epoch(G: 'generator model',
         ZY = netArc(F.interpolate(Y, [112, 112], mode='bilinear', align_corners=False))
         
         if args.eye_mouth_detector_loss:
-            Xt_eyes, Xt_heatmap_left, Xt_heatmap_right, Xt_mouth, Xt_heatmap_mouth = detect_landmarks(Xt, model_ft)
-            Y_eyes, Y_heatmap_left, Y_heatmap_right, Y_mouth, Y_heatmap_mouth = detect_landmarks(Y, model_ft)
-            eye_heatmaps = [Xt_heatmap_left, Xt_heatmap_right, Y_heatmap_left, Y_heatmap_right]
-            mouth_heatmaps = [Xt_heatmap_mouth, Y_heatmap_mouth]
+            Xt_eyes, Xt_mouth, Xt_heatmap = detect_landmarks(Xt, model_ft)
+            Y_eyes, Y_mouth, Y_heatmap = detect_landmarks(Y, model_ft)
+            heatmaps = [Xt_heatmap, Y_heatmap]
         else:
-            eye_heatmaps = None
-            mouth_heatmaps = None
+            heatmaps = None
             
         lossG, loss_adv_accumulated, L_adv, L_attr, L_id, L_rec, L_l2_eyes_mouth = compute_generator_losses(G, Y, Xt, Xt_attr, Di,
-                                                                             embed, ZY, eye_heatmaps, mouth_heatmaps,loss_adv_accumulated, 
+                                                                             embed, ZY, heatmaps,loss_adv_accumulated, 
                                                                              diff_person, same_person, args)
         
         with amp.scale_loss(lossG, opt_G) as scaled_loss:
@@ -355,6 +353,7 @@ if __name__ == "__main__":
         config.lr_G = args.lr_G
         config.lr_D = args.lr_D
         config.num_blocks = args.num_blocks
+        config.max_epoch = args.max_epoch
     elif not os.path.exists('./images'):
         os.mkdir('./images')
     
