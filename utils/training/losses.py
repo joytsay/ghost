@@ -38,8 +38,10 @@ def compute_generator_losses(G, Y, Xt, Xt_attr, Di, embed, ZY, heatmaps, loss_ad
     
     # l2 eyes mouth loss
     if args.eye_mouth_detector_loss:
-        Xt_heatmap, Y_heatmap = heatmaps
-        L_l2_eyes_mouth = l2_loss(Xt_heatmap, Y_heatmap)
+        Xt_pred_heatmap_left_eyes, Xt_pred_heatmap_right_eyes, Xt_pred_heatmap_mouth, Y_pred_heatmap_left_eyes, Y_pred_heatmap_right_eyes, Y_pred_heatmap_mouth = heatmaps
+        L_l2_eyes_mouth = l2_loss(Xt_pred_heatmap_left_eyes, Y_pred_heatmap_left_eyes) + \
+            l2_loss(Xt_pred_heatmap_right_eyes, Y_pred_heatmap_right_eyes) + \
+            l2_loss(Xt_pred_heatmap_mouth, Y_pred_heatmap_mouth)
     else:
         L_l2_eyes_mouth = 0
         

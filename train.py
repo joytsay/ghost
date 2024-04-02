@@ -74,15 +74,16 @@ def train_one_epoch(G: 'generator model',
         ZY = netArc(F.interpolate(Y, [112, 112], mode='bilinear', align_corners=False))
         
         if args.eye_mouth_detector_loss:
-            Xt_eyes, Xt_mouth, Xt_heatmap = detect_landmarks(Xt, model_ft)
-            Y_eyes, Y_mouth, Y_heatmap = detect_landmarks(Y, model_ft)
-            heatmaps = [Xt_heatmap, Y_heatmap]
+            Xt_left_eyes, Xt_right_eyes, Xt_mouth, Xt_pred_heatmap_left_eyes, Xt_pred_heatmap_right_eyes, Xt_pred_heatmap_mouth = detect_landmarks(Xt, model_ft)
+            Y_left_eyes, Y_right_eyes, Y_mouth, Y_pred_heatmap_left_eyes, Y_pred_heatmap_right_eyes, Y_pred_heatmap_mouth = detect_landmarks(Y, model_ft)
+            heatmaps = [Xt_pred_heatmap_left_eyes, Xt_pred_heatmap_right_eyes, Xt_pred_heatmap_mouth,
+                        Y_pred_heatmap_left_eyes, Y_pred_heatmap_right_eyes, Y_pred_heatmap_mouth]
         else:
             heatmaps = None
             
         lossG, loss_adv_accumulated, L_adv, L_attr, L_id, L_rec, L_l2_eyes_mouth = compute_generator_losses(G, Y, Xt, Xt_attr, Di,
-                                                                             embed, ZY, heatmaps,loss_adv_accumulated, 
-                                                                             diff_person, same_person, args)
+                                                                                                            embed, ZY, heatmaps, loss_adv_accumulated,
+                                                                                                            diff_person, same_person, args)
         
         with amp.scale_loss(lossG, opt_G) as scaled_loss:
             scaled_loss.backward()
@@ -107,8 +108,8 @@ def train_one_epoch(G: 'generator model',
         if iteration % args.show_step == 0:
             images = [Xs, Xt, Y]
             if args.eye_mouth_detector_loss:
-                Xt_eyes_img = paint_eyes(Xt, Xt_eyes, Xt_mouth)
-                Yt_eyes_img = paint_eyes(Y, Y_eyes, Y_mouth)
+                Xt_eyes_img = paint_eyes(Xt, Xt_left_eyes, Xt_right_eyes, Xt_mouth)
+                Yt_eyes_img = paint_eyes(Y, Y_left_eyes, Y_right_eyes, Y_mouth)
                 images.extend([Xt_eyes_img, Yt_eyes_img])
             image = make_image_list(images)
             if args.use_wandb:
