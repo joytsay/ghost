@@ -142,7 +142,6 @@ def compose_occlusion(face_img, occlusions):
         # rotate
         R = cv2.getRotationMatrix2D((occlusion.shape[0]/2, occlusion.shape[1]/2), random.random()*180-90, scale)
         occlusion = cv2.warpAffine(occlusion, R, (occlusion.shape[1], occlusion.shape[0]))
-        print(f"occlusion.shape {occlusion.shape}")
         oh, ow, _ = occlusion.shape
         oc_color = occlusion[:, :, :3]
         oc_alpha = occlusion[:, :, 3].astype(np.float) / 255.
@@ -163,6 +162,13 @@ class AugmentedOcclusions(TensorDataset):
         self.face_img_paths = glob.glob(f'{face_sets}/*/*.*g')
         self.hands_data = glob.glob(f'{hand_sets}/*.png')
         self.obj_data = glob.glob(f'{obj_sets}/*/*.png')
+        self.transforms_arcface = transforms.Compose([
+            transforms.ColorJitter(0.2, 0.2, 0.2, 0.01),
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            # transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
         self.transforms_base = transforms.Compose([
             transforms.ColorJitter(0.2, 0.2, 0.2, 0.01),
             transforms.Resize((256, 256)),
@@ -203,7 +209,7 @@ class AugmentedOcclusions(TensorDataset):
         else:
             Xt = compose_occlusion(face_img, self.gen_occlusion())
             same_person = 1
-        return self.transforms_base(Image.fromarray(Xs)), self.transforms_base(Image.fromarray(Xt)), same_person
+        return self.transforms_arcface(Image.fromarray(Xs)), self.transforms_arcface(Image.fromarray(Xt)), self.transforms_base(Image.fromarray(Xs)), self.transforms_base(Image.fromarray(Xt)), same_person
 
     def __len__(self):
         return len(self.face_img_paths)

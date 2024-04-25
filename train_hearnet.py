@@ -13,7 +13,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 import torch
 import torch.optim.lr_scheduler as scheduler
-
+from utils.training.image_processing import make_image_list
 # custom imports
 sys.path.append('./apex/')
 
@@ -24,24 +24,7 @@ from utils.training.Dataset import AugmentedOcclusions
 from onnx2torch import convert
 
 print("finished imports")
-
-MSE = torch.nn.MSELoss()
 L1 = torch.nn.L1Loss()
-
-
-def get_numpy_image(X):
-    X = X[:8]
-    X = torchvision.utils.make_grid(X.detach().cpu(), nrow=X.shape[0]).numpy() * 0.5 + 0.5
-    X = X.transpose([1,2,0])*255
-    np.clip(X, 0, 255).astype(np.uint8)
-    return X
-
-
-def make_image(Xs, Xt, Y):
-    Xs = get_numpy_image(Xs)
-    Xt = get_numpy_image(Xt)
-    Y = get_numpy_image(Y)
-    return np.concatenate((Xs, Xt, Y), axis=0).transpose([2, 0, 1])
 
 def train_one_epoch(G: 'generator model', 
                     net: 'hearnet model', 
@@ -58,12 +41,14 @@ def train_one_epoch(G: 'generator model',
             break
         start_time = time.time()
         
-        Xs, Xt, same_person = data
+        Xs_orig, Xt_orig, Xs, Xt, same_person = data
+        Xs_orig = Xs_orig.to(device)
+        Xt_orig = Xt_orig.to(device)
         Xs = Xs.to(device)
         Xt = Xt.to(device)
         with torch.no_grad():
-            embed_s = netArc(F.interpolate(Xs, [112, 112], mode='bilinear', align_corners=False))
-            embed_t = netArc(F.interpolate(Xt, [112, 112], mode='bilinear', align_corners=False))
+            embed_s = netArc(F.interpolate(Xs_orig, [112, 112], mode='bilinear', align_corners=False))
+            embed_t = netArc(F.interpolate(Xt_orig, [112, 112], mode='bilinear', align_corners=False))
         same_person = same_person.to(device)
 
         # train HEAR
@@ -95,11 +80,12 @@ def train_one_epoch(G: 'generator model',
 
         batch_time = time.time() - start_time
         if iteration % show_step == 0:
-            image = make_image(Xs, Xt, Yst)
+            images = [Xs, Xt, Ytt, Yst_hat, Yst]
+            image = make_image_list(images)
             if args.use_wandb:
                 wandb.log({"gen_images":wandb.Image(image, caption=f"{epoch:03}" + '_' + f"{iteration:06}")})
             else:
-                cv2.imwrite('./images/HEAR_generated_image.jpg', image.transpose([1,2,0])[:,:,::-1])
+                cv2.imwrite('./images/HEAR_generated_image.jpg', image[:,:,::-1])
         print(f'epoch: {epoch}    {iteration} / {len(dataloader)}')
         print(f'loss: {loss.item()} batch_time: {batch_time}s')
         print(f'L_id: {L_id.item()} L_chg: {L_chg.item()} L_rec: {L_rec.item()}')
