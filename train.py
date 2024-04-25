@@ -74,8 +74,8 @@ def train_one_epoch(G: 'generator model',
         ZY = netArc(F.interpolate(Y, [112, 112], mode='bilinear', align_corners=False))
         
         if args.eye_mouth_detector_loss:
-            Xt_left_eyes, Xt_right_eyes, Xt_mouth, Xt_pred_heatmap_left_eyes, Xt_pred_heatmap_right_eyes, Xt_pred_heatmap_mouth = detect_landmarks(Xt, model_ft)
-            Y_left_eyes, Y_right_eyes, Y_mouth, Y_pred_heatmap_left_eyes, Y_pred_heatmap_right_eyes, Y_pred_heatmap_mouth = detect_landmarks(Y, model_ft)
+            Xt_left_eyes, Xt_right_eyes, Xt_mouth, Xt_pred_heatmap_left_eyes, Xt_pred_heatmap_right_eyes, Xt_pred_heatmap_mouth = detect_landmarks(Xt, model_ft, args.eye_mouth_all)
+            Y_left_eyes, Y_right_eyes, Y_mouth, Y_pred_heatmap_left_eyes, Y_pred_heatmap_right_eyes, Y_pred_heatmap_mouth = detect_landmarks(Y, model_ft, args.eye_mouth_all)
             heatmaps = [Xt_pred_heatmap_left_eyes, Xt_pred_heatmap_right_eyes, Xt_pred_heatmap_mouth,
                         Y_pred_heatmap_left_eyes, Y_pred_heatmap_right_eyes, Y_pred_heatmap_mouth]
         else:
@@ -306,7 +306,8 @@ if __name__ == "__main__":
     parser.add_argument('--scheduler', default=False, type=bool, help='If True decreasing LR is used for learning of generator and discriminator')
     parser.add_argument('--scheduler_step', default=5000, type=int)
     parser.add_argument('--scheduler_gamma', default=0.2, type=float, help='It is value, which shows how many times to decrease LR')
-    parser.add_argument('--eye_mouth_detector_loss', default=False, type=bool, help='If True eye loss with using AdaptiveWingLoss detector is applied to generator')
+    parser.add_argument('--eye_mouth_detector_loss', default=False, type=bool, help='If True eye mouth loss with using AdaptiveWingLoss detector is applied to generator')
+    parser.add_argument('--eye_mouth_all', default=False, type=bool, help='If True eye mouth uses all landmarks instead of partial')
     # info about this run
     parser.add_argument('--use_wandb', default=False, type=bool, help='Use wandb to track your experiments or not')
     parser.add_argument('--run_name', required=True, type=str, help='Name of this run. Used to create folders where to save the weights.')
@@ -346,6 +347,7 @@ if __name__ == "__main__":
         config.scheduler_step = args.scheduler_step
         config.scheduler_gamma = args.scheduler_gamma
         config.eye_mouth_detector_loss = args.eye_mouth_detector_loss
+        config.eye_mouth_all = args.eye_mouth_all
         config.pretrained = args.pretrained
         config.run_name = args.run_name
         config.G_path = args.G_path

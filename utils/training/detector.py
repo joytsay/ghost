@@ -15,7 +15,7 @@ transforms_base = transforms.Compose([
         ])
 
 
-def detect_landmarks(inputs, model_ft):
+def detect_landmarks(inputs, model_ft, use_all_lmks = False):
     mean = torch.tensor([0.5, 0.5, 0.5]).unsqueeze(1).unsqueeze(2).to(inputs.device)
     std = torch.tensor([0.5, 0.5, 0.5]).unsqueeze(1).unsqueeze(2).to(inputs.device)
     inputs = (std * inputs) + mean
@@ -24,12 +24,19 @@ def detect_landmarks(inputs, model_ft):
     pred_heatmap = outputs[-1][:, :-1, :, :].cpu() 
     pred_landmarks, _ = get_preds_fromhm(pred_heatmap)
     landmarks = pred_landmarks*4.0
-    left_eyes = torch.stack((landmarks[:,60,:], landmarks[:,61,:], landmarks[:,63,:], landmarks[:,64,:], landmarks[:,67,:], landmarks[:,65,:], landmarks[:,96,:]), 1)
-    right_eyes = torch.stack((landmarks[:,68,:], landmarks[:,69,:], landmarks[:,71,:], landmarks[:,72,:], landmarks[:,75,:], landmarks[:,73,:], landmarks[:,97,:]), 1)
+    left_eyes = torch.unsqueeze((landmarks[:,96,:]), 1)
+    right_eyes = torch.unsqueeze((landmarks[:,97,:]), 1)
     mouth = torch.stack((landmarks[:,88,:], landmarks[:,89,:], landmarks[:,91,:], landmarks[:,92,:], landmarks[:,95,:], landmarks[:,93,:]), 1)
-    pred_heatmap_left_eyes = torch.stack((pred_heatmap[:,60,:], pred_heatmap[:,61,:], pred_heatmap[:,63,:], pred_heatmap[:,64,:], pred_heatmap[:,67,:], pred_heatmap[:,65,:], pred_heatmap[:,96,:]), 1)
-    pred_heatmap_right_eyes = torch.stack((pred_heatmap[:,68,:], pred_heatmap[:,69,:], pred_heatmap[:,71,:], pred_heatmap[:,72,:], pred_heatmap[:,75,:], pred_heatmap[:,73,:], pred_heatmap[:,97,:]), 1)
+    pred_heatmap_left_eyes = torch.unsqueeze((pred_heatmap[:,96,:]), 1)
+    pred_heatmap_right_eyes = torch.unsqueeze((pred_heatmap[:,97,:]), 1)
     pred_heatmap_mouth = torch.stack((pred_heatmap[:,88,:], pred_heatmap[:,89,:], pred_heatmap[:,91,:], pred_heatmap[:,92,:], pred_heatmap[:,95,:], pred_heatmap[:,93,:]), 1)
+    if use_all_lmks:
+        left_eyes = torch.cat((landmarks[:,60:68,:], landmarks[:,96:97,:]), 1)
+        right_eyes = torch.cat((landmarks[:,68:76,:], landmarks[:,97:98,:]), 1)
+        mouth = landmarks[:,88:96,:]
+        pred_heatmap_left_eyes = torch.cat((pred_heatmap[:,60:68,:], pred_heatmap[:,96:97,:]), 1)
+        pred_heatmap_right_eyes = torch.cat((pred_heatmap[:,68:76,:], pred_heatmap[:,97:98,:]), 1)
+        pred_heatmap_mouth = pred_heatmap[:,76:96,:]
     return left_eyes, right_eyes, mouth, pred_heatmap_left_eyes, pred_heatmap_right_eyes, pred_heatmap_mouth
 
 
