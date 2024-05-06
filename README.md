@@ -13,6 +13,14 @@ Our paper ["GHOST—A New Face Swap Approach for Image and Video Domains"](https
   </a>
 </p>
 
+## Add HEARNET
+- code reference:  
+  - [FaceShifter](https://github.com/taotaonice/FaceShifter)
+- train hearnet: 
+```
+python train_hearnet.py --use_wandb True --wandb_entity joytsay --dataset_path /data/dataset/glintMerge/ --arcface_onnx_path /code/insightface/recognition/arcface_torch/work_dirs/glint360k_asian_r50_refine_w600/glint360k_asian_r50_refine_w600_100epoch.onnx --G_path saved_models_refine-glintMerge-partial-mouth-eyes-lmks/G_latest.pth --run_name hearNetInit --batch_size 8 --color_weight 0.0
+```
+
 ## GHOST Ethics 
 
 Deepfake stands for a face swapping algorithm where the source and target can be an image or a video. Researchers have investigated sophisticated generative adversarial networks (GAN), autoencoders, and other approaches to establish precise and robust algorithms for face swapping. However, the achieved results are far from perfect in terms of human and visual evaluation. In this study, we propose a new one-shot pipeline for image-to-image and image-to-video face swap solutions - GHOST (Generative High-fidelity One Shot Transfer).
