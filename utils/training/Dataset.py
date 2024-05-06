@@ -9,6 +9,7 @@ import cv2
 import tqdm
 import sys
 import numpy as np
+from aux_functions import *
 sys.path.append('..')
 # from utils.cap_aug import CAP_AUG
     
@@ -80,7 +81,7 @@ class FaceEmbedVGG2(TensorDataset):
         
         self.folder2imgs = {}
 
-        for folder in tqdm.tqdm(self.folders_list):
+        for folder in tqdm(self.folders_list):
             folder_imgs = glob.glob(f'{folder}/*')
             self.folder2imgs[folder] = folder_imgs
              
@@ -156,12 +157,17 @@ def compose_occlusion(face_img, occlusions):
         face_img = tmp[oh//2:oh//2+h, ow//2:ow//2+w, :].astype(np.uint8)
     return face_img
 
+def compose_occlusion_mask(face_img, args):
+    masked_image, mask, mask_binary_array, original_image = mask_image(
+        face_img, args
+    )
+    return masked_image[0]
+
 class AugmentedOcclusions(TensorDataset):
-    def __init__(self, face_sets, hand_sets, obj_sets, same_prob=0.5):
-        self.same_prob = same_prob
-        self.face_img_paths = glob.glob(f'{face_sets}/*/*.*g')
-        self.hands_data = glob.glob(f'{hand_sets}/*.png')
-        self.obj_data = glob.glob(f'{obj_sets}/*/*.png')
+    def __init__(self, args):
+        self.args = args
+        self.same_prob = args.same_prob
+        self.face_img_paths = glob.glob(f'{args.dataset_path}/*/*.*g')
         self.transforms_arcface = transforms.Compose([
             transforms.ColorJitter(0.2, 0.2, 0.2, 0.01),
             transforms.Resize((224, 224)),
@@ -204,10 +210,10 @@ class AugmentedOcclusions(TensorDataset):
         if p > self.same_prob:
             Xt_path = self.face_img_paths[random.randint(0, len(self.face_img_paths)-1)]
             Xt = cv2.imread(Xt_path)[:, :, ::-1]
-            Xt = compose_occlusion(Xt, self.gen_occlusion())
+            Xt = compose_occlusion_mask(Xt, self.args)
             same_person = 0
         else:
-            Xt = compose_occlusion(face_img, self.gen_occlusion())
+            Xt = compose_occlusion_mask(face_img, self.args)
             same_person = 1
         return self.transforms_arcface(Image.fromarray(Xs)), self.transforms_arcface(Image.fromarray(Xt)), self.transforms_base(Image.fromarray(Xs)), self.transforms_base(Image.fromarray(Xt)), same_person
 

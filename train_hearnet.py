@@ -14,6 +14,7 @@ import torch.nn.functional as F
 import torch
 import torch.optim.lr_scheduler as scheduler
 from utils.training.image_processing import make_image_list
+import dlib
 # custom imports
 sys.path.append('./apex/')
 
@@ -22,6 +23,7 @@ from network.AEI_Net import *
 from network.HEAR_Net import *
 from utils.training.Dataset import AugmentedOcclusions
 from onnx2torch import convert
+
 
 print("finished imports")
 L1 = torch.nn.L1Loss()
@@ -130,10 +132,38 @@ def train(args, device):
                 print("Loaded pretrained weights for HEARNET")
         except FileNotFoundError as e:
             print("Not found pretrained weights. Continue without any pretrained weights.")
+
+    # Set up dlib face detector and predictor
+    args.detector = dlib.get_frontal_face_detector()
+    path_to_dlib_model = "dlib_models/shape_predictor_68_face_landmarks.dat"
+    if not os.path.exists(path_to_dlib_model):
+        download_dlib_model()
+
+    args.predictor = dlib.shape_predictor(path_to_dlib_model)
+
+    # Extract data from code
+    mask_code = "".join(args.code.split()).split(",")
+    args.code_count = np.zeros(len(mask_code))
+    args.mask_dict_of_dict = {}
+
+
+    for i, entry in enumerate(mask_code):
+        mask_dict = {}
+        mask_color = ""
+        mask_texture = ""
+        mask_type = entry.split("-")[0]
+        if len(entry.split("-")) == 2:
+            mask_variation = entry.split("-")[1]
+            if "#" in mask_variation:
+                mask_color = mask_variation
+            else:
+                mask_texture = mask_variation
+        mask_dict["type"] = mask_type
+        mask_dict["color"] = mask_color
+        mask_dict["texture"] = mask_texture
+        args.mask_dict_of_dict[i] = mask_dict
     
-    dataset = AugmentedOcclusions(args.faces_data,
-                                  args.hands_data,
-                                  args.shapes_data, same_prob=0.5)
+    dataset = AugmentedOcclusions(args)
         
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=True)
 
@@ -161,9 +191,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # dataset params
-    parser.add_argument('--faces_data', default='./examples/heartest/faces', help='Path to the faces dataset.')
-    parser.add_argument('--hands_data', default='./examples/heartest/hands', help='Path to the hands dataset.')
-    parser.add_argument('--shapes_data', default='./examples/heartest/shapes', help='Path to the shapes dataset.')
+    parser.add_argument('--dataset_path', default='./examples/heartest/faces', help='Path to the faces dataset.')
     parser.add_argument('--arcface_onnx_path', default=None, help='Path to source arcface emb extractor')
     parser.add_argument('--G_path', default='', help='Path to pretrained weights for G. Only used if pretrained=True')
     parser.add_argument('--HEAR_path', default='', help='Path to pretrained weights for HEARNET. Only used if pretrained=True')
@@ -179,11 +207,72 @@ if __name__ == "__main__":
     # training params you probably don't want to change
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--lr', default=4e-4, type=float)
+    parser.add_argument('--same_prob', default=0.25, type=float)
     parser.add_argument('--max_epoch', default=2000, type=int)
     parser.add_argument('--max_steps', default=-1, type=int)
     parser.add_argument('--show_step', default=10, type=int)
     parser.add_argument('--save_epoch', default=1000, type=int)
     parser.add_argument('--optim_level', default='O2', type=str)
+    parser.add_argument(
+        "--path",
+        type=str,
+        default="",
+        help="Path to either the folder containing images or the image itself",
+    )
+    parser.add_argument(
+        "--mask_type",
+        type=str,
+        default="glasses",
+        choices=["surgical", "N95", "KN95", "cloth", "gas", "inpaint", "mic", "hand", "glasses", "random", "all"],
+        help="Type of the mask to be applied. Available options: all, surgical_blue, surgical_green, N95, cloth",
+    )
+
+    parser.add_argument(
+        "--pattern",
+        type=str,
+        default="",
+        help="Type of the pattern. Available options in masks/textures",
+    )
+
+    parser.add_argument(
+        "--pattern_weight",
+        type=float,
+        default=0.5,
+        help="Weight of the pattern. Must be between 0 and 1",
+    )
+
+    parser.add_argument(
+        "--color",
+        type=str,
+        default="#0473e2",
+        help="Hex color value that need to be overlayed to the mask",
+    )
+
+    parser.add_argument(
+        "--color_weight",
+        type=float,
+        default=0.5,
+        help="Weight of the color intensity. Must be between 0 and 1",
+    )
+
+    parser.add_argument(
+        "--code",
+        type=str,
+        # default="cloth-masks/textures/check/check_4.jpg, cloth-#e54294, cloth-#ff0000, cloth, cloth-masks/textures/others/heart_1.png, cloth-masks/textures/fruits/pineapple.png, N95, surgical_blue, surgical_green",
+        default="",
+        help="Generate specific formats",
+    )
+
+
+    parser.add_argument(
+        "--verbose", dest="verbose", action="store_true", help="Turn verbosity on"
+    )
+    parser.add_argument(
+        "--write_original_image",
+        dest="write_original_image",
+        action="store_true",
+        help="If true, original image is also stored in the masked folder",
+    )
     args = parser.parse_args()
     
     if args.use_wandb==True:
