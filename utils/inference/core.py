@@ -1,5 +1,5 @@
 from typing import List, Tuple, Callable, Any
-
+import cv2
 import torch
 import torch.nn.functional as F
 import numpy as np
@@ -31,12 +31,15 @@ def model_inference(full_frames: List[np.ndarray],
                     target: List, 
                     netArc: Callable,
                     G: Callable,
+                    net: Callable,
                     app: Callable,
+                    args, 
                     set_target: bool,
                     similarity_th=0.15,
                     crop_size=224,
                     BS=60,
-                    half=True) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+                    half=True,
+                    use_onnx=False) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Using original frames get faceswaped frames and transofrmations
     """
@@ -49,30 +52,61 @@ def model_inference(full_frames: List[np.ndarray],
     
     # Normalize source images and transform to torch and get Arcface embeddings
     source_embeds = []
+    source_curr_arr = None
     for source_curr in source:
+        source_curr_arr = cv2.resize(source_curr, (256,256))
+        print(f"source_curr_arr {source_curr_arr.shape}")
         source_curr = normalize_and_torch(source_curr)
+        print(netArc(F.interpolate(source_curr, scale_factor=0.5, mode='bilinear', align_corners=True)).shape)
         source_embeds.append(netArc(F.interpolate(source_curr, scale_factor=0.5, mode='bilinear', align_corners=True)))
     
     final_frames_list = []
-    for idx, (crop_frames, tfm_array, source_embed) in enumerate(zip(crop_frames_list, tfm_array_list, source_embeds)):
+    for idx, (crop_frames, tfm_array, source_embed, target_embed) in enumerate(zip(crop_frames_list, tfm_array_list, source_embeds, target_embeds)):
         # Resize croped frames and get vector which shows on which frames there were faces
         resized_frs, present = resize_frames(crop_frames)
         resized_frs = np.array(resized_frs)
-
         # transform embeds of Xs and target frames to use by model
         target_batch_rs = transform_target_to_torch(resized_frs, half=half)
 
         if half:
             source_embed = source_embed.half()
+            target_embed = target_embed.half()
 
         # run model
         size = target_batch_rs.shape[0]
         model_output = []
 
         for i in tqdm(range(0, size, BS)):
-            Y_st = faceshifter_batch(source_embed, target_batch_rs[i:i+BS], G)
+            Y_st = faceshifter_batch(source_embed, target_batch_rs[i:i+BS], G, use_onnx=use_onnx)
+
+            if args.HEAR_path:
+                Xt = target_batch_rs[i:i+BS]
+                target_embed = target_embed.unsqueeze(0)
+                with torch.no_grad():
+                    Yst_hat, _ = G(Xt, source_embed)
+                    Ytt, _ = G(Xt, target_embed)
+                dYt = Xt - Ytt
+                print(f"Xt {Xt.shape}")
+                Xt_arr = ((Xt.permute(0, 2, 3, 1)*0.5 + 0.5)*255).cpu().detach().numpy().squeeze()
+                print(f"Xt_arr {Xt_arr.shape}")
+                Ytt_arr = ((Ytt.permute(0, 2, 3, 1)*0.5 + 0.5)*255).cpu().detach().numpy().squeeze()
+                print(f"Ytt_arr {Ytt_arr.shape}")
+                Yst_hat_arr = ((Yst_hat.permute(0, 2, 3, 1)*0.5 + 0.5)*255).cpu().detach().numpy().squeeze()
+                print(f"Yst_hat_arr {Yst_hat_arr.shape}")
+                dYt_arr = ((dYt.permute(0, 2, 3, 1)*0.5 + 0.5)*255).cpu().detach().numpy().squeeze()
+                print(f"dYt_arr {dYt_arr.shape}")
+                dYt = torch.Tensor(dYt).to("cuda")
+                hear_input = torch.cat((Yst_hat, dYt), dim=1)
+                Y_st = net(hear_input)
+                Y_st = (Y_st.permute(0, 2, 3, 1)*0.5 + 0.5)*255
+                Y_st = Y_st[:,:,:,[2,1,0]]
+                Y_st = Y_st.cpu().detach().numpy()
+                print(f"Y_st {Y_st.shape}")
+                hear_debug_arr = np.concatenate([source_curr_arr[:,:,[2,1,0]], Xt_arr[:,:,[2,1,0]], Ytt_arr[:,:,[2,1,0]], Yst_hat_arr[:,:,[2,1,0]], dYt_arr[:,:,[2,1,0]], Y_st.squeeze()], axis=0)
+                cv2.imwrite('./hear_debug_arr.png', hear_debug_arr)
             model_output.append(Y_st)
         torch.cuda.empty_cache()
+        print(f"Y_st {Y_st.shape}")
         model_output = np.concatenate(model_output)
 
         # create list of final frames with transformed faces

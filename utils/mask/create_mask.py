@@ -26,7 +26,7 @@ COLOR = [
 def color_the_mask(mask_image, color, intensity):
     assert 0 <= intensity <= 1, "intensity should be between 0 and 1"
     RGB_color = ImageColor.getcolor(color, "RGB")
-    RGB_color = (RGB_color[2], RGB_color[1], RGB_color[0])
+    # RGB_color = (RGB_color[2], RGB_color[1], RGB_color[0])
     orig_shape = mask_image.shape
     bit_mask = mask_image[:, :, 3]
     mask_image = mask_image[:, :, 0:3]

@@ -82,20 +82,21 @@ def train_one_epoch(G: 'generator model',
 
         batch_time = time.time() - start_time
         if iteration % show_step == 0:
-            images = [Xs, Xt, Ytt, Yst_hat, Yst]
+            images = [Xs, Xt, Ytt, Yst_hat, dYt, Yst]
             image = make_image_list(images)
             if args.use_wandb:
                 wandb.log({"gen_images":wandb.Image(image, caption=f"{epoch:03}" + '_' + f"{iteration:06}")})
             else:
                 cv2.imwrite('./images/HEAR_generated_image.jpg', image[:,:,::-1])
-        print(f'epoch: {epoch}    {iteration} / {len(dataloader)}')
-        print(f'loss: {loss.item()} batch_time: {batch_time}s')
-        print(f'L_id: {L_id.item()} L_chg: {L_chg.item()} L_rec: {L_rec.item()}')
-        if args.use_wandb:
-            wandb.log({"loss": loss.item(),
-                       "L_id": L_id.item(),
-                       "L_chg": L_chg.item(),
-                       "L_rec": L_rec.item()})
+        if iteration % 10 == 0:
+            print(f'epoch: {epoch}    {iteration} / {len(dataloader)}')
+            print(f'loss: {loss.item()} batch_time: {batch_time}s')
+            print(f'L_id: {L_id.item()} L_chg: {L_chg.item()} L_rec: {L_rec.item()}')
+            if args.use_wandb:
+                wandb.log({"loss": loss.item(),
+                        "L_id": L_id.item(),
+                        "L_chg": L_chg.item(),
+                        "L_rec": L_rec.item()})
         if iteration % save_epoch == 0:
             torch.save(net.state_dict(), f'./saved_models_{args.run_name}/HEAR_latest.pth')
 
@@ -205,13 +206,13 @@ if __name__ == "__main__":
     parser.add_argument('--wandb_project', default='your-project-name', type=str)
     parser.add_argument('--wandb_entity', default='your-login', type=str)
     # training params you probably don't want to change
-    parser.add_argument('--batch_size', default=32, type=int)
+    parser.add_argument('--batch_size', default=16, type=int)
     parser.add_argument('--lr', default=4e-4, type=float)
-    parser.add_argument('--same_prob', default=0.25, type=float)
-    parser.add_argument('--max_epoch', default=2000, type=int)
+    parser.add_argument('--same_prob', default=0.5, type=float)
+    parser.add_argument('--max_epoch', default=5, type=int)
     parser.add_argument('--max_steps', default=-1, type=int)
-    parser.add_argument('--show_step', default=10, type=int)
-    parser.add_argument('--save_epoch', default=1000, type=int)
+    parser.add_argument('--show_step', default=5000, type=int)
+    parser.add_argument('--save_epoch', default=1, type=int)
     parser.add_argument('--optim_level', default='O2', type=str)
     parser.add_argument(
         "--path",
@@ -266,12 +267,6 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--verbose", dest="verbose", action="store_true", help="Turn verbosity on"
-    )
-    parser.add_argument(
-        "--write_original_image",
-        dest="write_original_image",
-        action="store_true",
-        help="If true, original image is also stored in the masked folder",
     )
     args = parser.parse_args()
     

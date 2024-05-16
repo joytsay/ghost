@@ -42,14 +42,14 @@ def torch2image(torch_image: torch.tensor) -> np.ndarray:
         return np_image
 
 
-def make_image_list(images) -> np.ndarray:    
+def make_image_list(images, axis=0) -> np.ndarray:    
     np_images = []
     
     for torch_image in images:
         np_img = torch2image(torch_image)
         np_images.append(np_img)
     
-    return np.concatenate(np_images, axis=0)
+    return np.concatenate(np_images, axis)
 
 
 def read_torch_image(path: str) -> torch.tensor:

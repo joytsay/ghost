@@ -72,7 +72,6 @@ def get_final_image(final_frames: List[np.ndarray],
         swap_t = cv2.warpAffine(frame, mat_rev, (full_frame.shape[1], full_frame.shape[0]), borderMode=cv2.BORDER_REPLICATE)
         mask_t = cv2.warpAffine(mask, mat_rev, (full_frame.shape[1], full_frame.shape[0]))
         mask_t = np.expand_dims(mask_t, 2)
-
         final = mask_t*swap_t + (1-mask_t)*final
     final = np.array(final, dtype='uint8')
     return final

@@ -228,33 +228,33 @@ def get_six_points(face_landmark, image, type):
 
     angle = get_angle(perp_line, nose_mid_line)
     # print("angle: ", angle)
-
-    nose_mid_line, _, _, _, _ = get_line(face_landmark, image, type="nose_tip")
-    points = get_points_on_chin(nose_mid_line, face_landmark)
-    if len(points) < 2:
-        face_landmark = get_face_ellipse(face_landmark)
-        # print("extrapolating chin")
-        points = get_points_on_chin(
-            nose_mid_line, face_landmark, chin_type="chin_extrapolated"
-        )
-        if len(points) < 2:
-            points = []
-            points.append(face_landmark["chin"][0])
-            points.append(face_landmark["chin"][-1])
-    face_a = points[0]
-    face_c = points[-1]
-    # cv2.imshow('j', image)
-    # cv2.waitKey(0)
-    nose_mid_line, _, _, _, _ = get_line(face_landmark, image, type="bottom_lip")
-    points = get_points_on_chin(nose_mid_line, face_landmark)
-    face_d = points[0]
-    face_f = points[-1]
-
     if type == "glasses":
         _, _, face_a, face_c, face_b = get_line(face_landmark, image, type="eye")
         face_f = np.mean(np.array([face_landmark["nose_bridge"][0], face_landmark["nose_bridge"][1]]), axis=0)
         face_e = np.mean(np.array(face_landmark["left_eyebrow"]), axis=0)
         face_d = np.mean(np.array(face_landmark["right_eyebrow"]), axis=0)
+    else:
+
+        nose_mid_line, _, _, _, _ = get_line(face_landmark, image, type="nose_tip")
+        points = get_points_on_chin(nose_mid_line, face_landmark)
+        if len(points) < 2:
+            face_landmark = get_face_ellipse(face_landmark)
+            # print("extrapolating chin")
+            points = get_points_on_chin(
+                nose_mid_line, face_landmark, chin_type="chin_extrapolated"
+            )
+            if len(points) < 2:
+                points = []
+                points.append(face_landmark["chin"][0])
+                points.append(face_landmark["chin"][-1])
+        face_a = points[0]
+        face_c = points[-1]
+        # cv2.imshow('j', image)
+        # cv2.waitKey(0)
+        nose_mid_line, _, _, _, _ = get_line(face_landmark, image, type="bottom_lip")
+        points = get_points_on_chin(nose_mid_line, face_landmark)
+        face_d = points[0]
+        face_f = points[-1]
 
     six_points = np.float32([face_a, face_b, face_c, face_f, face_e, face_d])
     return six_points, angle
@@ -321,7 +321,7 @@ def mask_face(image, face_location, six_points, angle, args, type="surgical"):
             str = "surgical_blue"
         cfg = read_cfg(config_filename="utils/mask/masks.cfg", mask_type=str, verbose=False)
     img = cv2.imread(cfg.template, cv2.IMREAD_UNCHANGED)
-    img[:,:,[0,1,2]] = img[:,:,[2,1,0]]
+    # img[:,:,[0,1,2]] = img[:,:,[2,1,0]]
 
     # Process the mask if necessary
     if args.pattern:
@@ -366,9 +366,9 @@ def mask_face(image, face_location, six_points, angle, args, type="surgical"):
     # Apply mask
     kernel = np.ones((3, 3), np.uint8)
     mask_inv = cv2.bitwise_not(mask)
-    mask_inv = cv2.erode(mask_inv, kernel, iterations=2)
+    # mask_inv = cv2.erode(mask_inv, kernel, iterations=2)
     img_bg = cv2.bitwise_and(image, image, mask=mask_inv)
-    mask = cv2.dilate(mask, kernel, iterations=1)
+    mask = cv2.dilate(mask, kernel, iterations=2)
     img_fg = cv2.bitwise_and(dst_mask, dst_mask, mask=mask)
     out_img = cv2.add(img_bg, img_fg[:, :, 0:3])
     if "empty" in type or "inpaint" in type:

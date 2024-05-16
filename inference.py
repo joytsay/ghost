@@ -3,21 +3,30 @@ import cv2
 import torch
 import time
 import os
+import sys
 
 from utils.inference.image_processing import crop_face, get_final_image, show_images
 from utils.inference.video_processing import read_video, get_target, get_final_video, add_audio_from_another_video, face_enhancement
 from utils.inference.core import model_inference
 
 from network.AEI_Net import AEI_Net
+import torch.optim as optim
+import torch.nn.functional as F
+sys.path.append('./apex/')
+from apex import amp
+from network.HEAR_Net import *
 from coordinate_reg.image_infer import Handler
 from insightface_func.face_detect_crop_multi import Face_detect_crop
 from arcface_model.iresnet import iresnet100
 from models.pix2pix_model import Pix2PixModel
 from models.config_sr import TestOptions
+from onnx2torch import convert
 import warnings
 warnings.filterwarnings("ignore")
 
 def init_models(args):
+    lr = args.lr
+    optim_level = args.optim_level
     # model for face cropping
     app = Face_detect_crop(name='antelope', root='./insightface_func/models')
     app.prepare(ctx_id= 0, det_thresh=0.6, det_size=(640,640))
@@ -48,12 +57,28 @@ def init_models(args):
         model.netG.train()
     else:
         model = None
+    if args.arcface_onnx_path:
+        netArc = convert(args.arcface_onnx_path)
+        netArc = netArc.cuda()
+        netArc.eval()
+
+        
+    if args.HEAR_path:
+        net = HearNet()
+        net.eval()
+        net.to('cuda')
+        opt = optim.Adam(net.parameters(), lr=lr, betas=(0, 0.999))
+        net, opt = amp.initialize(net, opt, opt_level=optim_level)
+        net.load_state_dict(torch.load(args.HEAR_path, map_location=torch.device('cpu')), strict=False)
+        print("Loaded pretrained weights for HEARNET")
+    else:
+        net = None
     
-    return app, G, netArc, handler, model
+    return app, G, netArc, net, handler, model
     
     
 def main(args):
-    app, G, netArc, handler, model = init_models(args)
+    app, G, netArc, net, handler, model = init_models(args)
     
     # get crops from source images
     print('List of source paths: ',args.source_paths)
@@ -97,7 +122,9 @@ def main(args):
                                                                                        target,
                                                                                        netArc,
                                                                                        G,
-                                                                                       app, 
+                                                                                       net,
+                                                                                       app,
+                                                                                       args, 
                                                                                        set_target,
                                                                                        similarity_th=args.similarity_th,
                                                                                        crop_size=args.crop_size,
@@ -129,10 +156,12 @@ if __name__ == "__main__":
     
     # Generator params
     parser.add_argument('--G_path', default='weights/G_unet_2blocks.pth', type=str, help='Path to weights for G')
+    parser.add_argument('--arcface_onnx_path', default='', help='Path to source arcface emb extractor')
+    parser.add_argument('--HEAR_path', default='', help='Path to pretrained weights for HEARNET. Only used if pretrained=True')
     parser.add_argument('--backbone', default='unet', const='unet', nargs='?', choices=['unet', 'linknet', 'resnet'], help='Backbone for attribute encoder')
     parser.add_argument('--num_blocks', default=2, type=int, help='Numbers of AddBlocks at AddResblock')
     
-    parser.add_argument('--batch_size', default=40, type=int)
+    parser.add_argument('--batch_size', default=1, type=int)
     parser.add_argument('--crop_size', default=224, type=int, help="Don't change this")
     parser.add_argument('--use_sr', default=False, type=bool, help='True for super resolution on swap images')
     parser.add_argument('--similarity_th', default=0.15, type=float, help='Threshold for selecting a face similar to the target')
@@ -148,6 +177,7 @@ if __name__ == "__main__":
     parser.add_argument('--image_to_image', default=False, type=bool, help='True for image to image swap, False for swap on video')
     parser.add_argument('--target_image', default='examples/images/beckham.jpg', type=str, help="It's necessary for image to image swap")
     parser.add_argument('--out_image_name', default='examples/results/result.png', type=str,help="It's necessary for image to image swap")
-    
+    parser.add_argument('--lr', default=4e-4, type=float)
+    parser.add_argument('--optim_level', default='O2', type=str)
     args = parser.parse_args()
     main(args)
